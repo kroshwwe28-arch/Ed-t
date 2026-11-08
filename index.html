@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoEdit — Otomatik Video Editör</title>
+<style>
+:root{--bg:#f5f5f2;--card:#fff;--ink:#1b1b19;--mute:#6c6c66;--line:#e1e1db;--acc:#2f5fd0;--accink:#fff;--ok:#1f8a4c;--err:#c0392b;--field:#fafaf8;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#141414;--card:#1e1e1d;--ink:#ecece8;--mute:#9b9b94;--line:#33332f;--acc:#7099ff;--accink:#0e0e0e;--ok:#4cc38a;--err:#ff7a6b;--field:#262625}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:780px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.card h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 12px;font-weight:600}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{flex:1;padding:9px;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:9px;cursor:pointer;font:inherit}
+.tab.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc);font-weight:600}
+.drop{display:block;border:2px dashed var(--line);border-radius:12px;padding:28px 12px;text-align:center;cursor:pointer;color:var(--mute)}
+.drop.over,.drop:hover{border-color:var(--acc);color:var(--ink)}
+.drop b{color:var(--ink)}
+input[type=text],input[type=number],input[type=password],select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink);font:inherit}
+label.f{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.mode{border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--field)}
+.mode input{margin-right:8px}
+.mode.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.mode small{display:block;color:var(--mute);margin-left:24px}
+.hint{color:var(--mute);font-size:13px;margin:8px 0 0}
+.chk{display:flex;align-items:center;gap:8px;margin-top:12px}
+button.go,button.sec{font:inherit;border-radius:10px;padding:11px 20px;cursor:pointer;border:1px solid var(--acc)}
+button.go{background:var(--acc);color:var(--accink);font-weight:600;width:100%}
+button.sec{background:transparent;color:var(--ink);border-color:var(--line)}
+button:disabled{opacity:.5;cursor:default}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;background:var(--acc);width:0;transition:width .4s}
+pre{background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:220px;overflow:auto;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;margin:10px 0 0}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.err{color:var(--err)} .ok{color:var(--ok)}
+.res{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-top:14px}
+.res .it{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--field)}
+.res video{width:100%;border-radius:8px;background:#000;max-height:360px}
+.res .nm{font-size:12px;color:var(--mute);margin:6px 0;word-break:break-all}
+a.dl{color:var(--acc);font-weight:600;text-decoration:none}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>AutoEdit</h1>
+  <p class="sub">Uzun videoyu yükle; sessizlikleri temizlesin, en iyi anları seçip altyazılı kısa klipler çıkarsın.</p>
+
+  <div id="formView">
+    <form id="form" class="card-wrap">
+      <div class="card">
+        <h2>1 · Video</h2>
+        <div class="tabs">
+          <button type="button" class="tab on" data-tab="file">Dosya yükle</button>
+          <button type="button" class="tab" data-tab="url" id="tabUrl">YouTube bağlantısı</button>
+        </div>
+        <div id="paneFile">
+          <label class="drop" id="drop">
+            <input type="file" id="file" accept="video/*,.mkv" hidden>
+            <span id="dropText"><b>Videoyu buraya sürükle</b> veya seçmek için tıkla</span>
+          </label>
+          <p class="hint" id="maxHint"></p>
+        </div>
+        <div id="paneUrl" class="hide">
+          <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=…">
+          <p class="hint">Not: Bazı sunucularda YouTube indirmeyi engelleyebilir. Olmazsa dosyayı yükle.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2 · Ne yapılsın?</h2>
+        <div class="modes" id="modes">
+          <label class="mode on"><input type="radio" name="mode" value="all" checked>Hepsi<small>Temiz video + kısa klipler</small></label>
+          <label class="mode"><input type="radio" name="mode" value="clean">Sadece temizle<small>Sessizlik/dolgu kesilir</small></label>
+          <label class="mode"><input type="radio" name="mode" value="clips">Sadece klipler<small>YZ en iyi anları seçer</small></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>3 · Ayarlar</h2>
+        <div class="grid">
+          <div><label class="f">Konuşma dili</label>
+            <select name="lang"><option value="tr">Türkçe</option><option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option><option value="es">Español</option><option value="it">Italiano</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="auto">Otomatik algıla</option></select></div>
+          <div><label class="f">Doğruluk (Whisper)</label>
+            <select name="model"><option value="tiny">tiny — çok hızlı</option><option value="base">base — hızlı</option><option value="small" selected>small — dengeli</option><option value="medium">medium — daha doğru</option><option value="large-v3">large-v3 — en doğru, yavaş</option></select></div>
+        </div>
+        <label class="chk"><input type="checkbox" id="subs" checked> Kelime vurgulu altyazı göm</label>
+
+        <div id="cleanOpts" style="margin-top:14px">
+          <div class="grid">
+            <div><label class="f">Şu süreden uzun sessizlikleri kes (sn)</label><input type="number" name="gap" value="0.6" step="0.1" min="0.1" max="5"></div>
+            <div><label class="f">Ek dolgu sözcükleri (virgülle)</label><input type="text" name="fillers" placeholder="yani, şey"></div>
+          </div>
+        </div>
+        <div id="clipOpts" style="margin-top:14px">
+          <div class="grid">
+            <div><label class="f">Klip sayısı</label><input type="number" name="clips" value="5" min="1" max="30"></div>
+            <div><label class="f">En az (sn)</label><input type="number" name="min_s" value="30" min="5" max="600"></div>
+            <div><label class="f">En çok (sn)</label><input type="number" name="max_s" value="90" min="5" max="600"></div>
+            <div><label class="f">Oran</label><select name="aspect"><option value="9:16">Dikey 9:16 (Shorts/Reels)</option><option value="16:9">Yatay 16:9</option></select></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="keyCard">
+        <h2>4 · Anthropic API anahtarı</h2>
+        <input type="password" name="api_key" id="apikey" placeholder="sk-ant-…" autocomplete="off">
+        <p class="hint">Klip seçimi için gerekir. Anahtar yalnızca bu iş için kullanılır, sunucuda saklanmaz.</p>
+      </div>
+
+      <button class="go" id="goBtn" type="submit">▶ Başlat</button>
+      <p class="err" id="formErr"></p>
+    </form>
+  </div>
+
+  <div id="jobView" class="hide">
+    <div class="card">
+      <div class="row"><h2 style="margin:0" id="jobTitle">İşleniyor…</h2>
+        <div><button class="sec" id="cancelBtn" type="button">■ İptal</button>
+        <button class="sec hide" id="newBtn" type="button">Yeni video</button></div></div>
+      <div class="bar"><i id="barFill"></i></div>
+      <div id="jobMsg" class="hint"></div>
+      <pre id="log"></pre>
+      <div class="res" id="res"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+let cfg = {has_key:false, allow_url:true, max_upload_mb:2048};
+let tab = 'file', pickedFile = null, jobId = null, timer = null, shownFiles = '';
+
+fetch('/api/config').then(r=>r.json()).then(c=>{
+  cfg = c;
+  $('#maxHint').textContent = 'mp4, mov, mkv, avi, webm — en fazla ' + c.max_upload_mb + ' MB';
+  if (!c.allow_url) $('#tabUrl').classList.add('hide');
+  updateModeUI();
+  const m = location.hash.match(/^#job=([0-9a-f]{12})$/);
+  if (m) resume(m[1]);
+}).catch(()=>{});
+
+// sekmeler
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  $('#paneFile').classList.toggle('hide', tab !== 'file');
+  $('#paneUrl').classList.toggle('hide', tab !== 'url');
+});
+
+// dosya seçimi / sürükle-bırak
+const drop = $('#drop');
+function setFile(f){
+  pickedFile = f;
+  $('#dropText').innerHTML = f ? '<b>' + esc(f.name) + '</b><br>' + fmt(f.size) : '<b>Videoyu buraya sürükle</b> veya seçmek için tıkla';
+}
+$('#file').onchange = e => setFile(e.target.files[0] || null);
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.remove('over');}));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+
+// mod seçimi
+function updateModeUI(){
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  document.querySelectorAll('.mode').forEach(l => l.classList.toggle('on', l.querySelector('input').checked));
+  $('#cleanOpts').classList.toggle('hide', mode === 'clips');
+  $('#clipOpts').classList.toggle('hide', mode === 'clean');
+  $('#keyCard').classList.toggle('hide', mode === 'clean' || cfg.has_key);
+}
+document.querySelectorAll('input[name=mode]').forEach(r => r.onchange = updateModeUI);
+
+// gönder
+$('#form').onsubmit = e => {
+  e.preventDefault();
+  $('#formErr').textContent = '';
+  const fd = new FormData($('#form'));
+  fd.set('subs', $('#subs').checked ? 'true' : 'false');
+  if (tab === 'file') {
+    if (!pickedFile) return $('#formErr').textContent = 'Bir video dosyası seç.';
+    fd.set('file', pickedFile);
+    fd.set('url', '');
+  } else {
+    if (!$('#url').value.trim()) return $('#formErr').textContent = 'Bir bağlantı yapıştır.';
+    fd.set('url', $('#url').value.trim());
+    fd.delete('file');
+  }
+  $('#goBtn').disabled = true;
+  showJob('Yükleniyor…', 0);
+  const x = new XMLHttpRequest();
+  x.open('POST', '/api/jobs');
+  x.upload.onprogress = ev => { if (ev.lengthComputable) {
+    $('#barFill').style.width = (ev.loaded / ev.total * 100) + '%';
+    $('#jobMsg').textContent = 'Yükleniyor: %' + Math.round(ev.loaded / ev.total * 100);
+  }};
+  x.onload = () => {
+    let j = {}; try { j = JSON.parse(x.responseText); } catch(_){}
+    if (x.status !== 200) return backToForm(j.detail || ('Hata ' + x.status));
+    jobId = j.id; location.hash = 'job=' + jobId; poll();
+  };
+  x.onerror = () => backToForm('Sunucuya ulaşılamadı.');
+  x.send(fd);
+};
+
+function showJob(title, pct){
+  $('#formView').classList.add('hide'); $('#jobView').classList.remove('hide');
+  $('#jobTitle').textContent = title; $('#barFill').style.width = pct + '%';
+  $('#cancelBtn').classList.remove('hide'); $('#newBtn').classList.add('hide');
+  $('#log').textContent = ''; $('#res').innerHTML = ''; $('#jobMsg').textContent = ''; shownFiles = '';
+}
+function backToForm(msg){
+  clearTimeout(timer); jobId = null; history.replaceState(null, '', location.pathname);
+  $('#jobView').classList.add('hide'); $('#formView').classList.remove('hide');
+  $('#goBtn').disabled = false; $('#formErr').textContent = msg || '';
+}
+$('#newBtn').onclick = () => backToForm('');
+$('#cancelBtn').onclick = () => { if (jobId) fetch('/api/jobs/' + jobId + '/cancel', {method:'POST'}); };
+function resume(id){ jobId = id; showJob('İşleniyor…', 0); poll(); }
+
+const STAGES = ['Sıraya alındı', 'İndiriliyor', 'Konuşma yazıya dökülüyor', 'Sessizlikler temizleniyor', 'Klipler seçiliyor', 'Klipler hazırlanıyor'];
+function poll(){
+  fetch('/api/jobs/' + jobId).then(r => { if (!r.ok) throw r.status; return r.json(); }).then(j => {
+    const log = $('#log'), atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
+    log.textContent = j.log; if (atEnd) log.scrollTop = log.scrollHeight;
+    const running = j.status === 'running', queued = j.status === 'queued';
+    if (queued) { $('#jobTitle').textContent = 'Sırada bekliyor'; $('#jobMsg').textContent = 'Sıradaki yeriniz: ' + j.queue_position; $('#barFill').style.width = '3%'; }
+    if (running) { $('#jobTitle').textContent = STAGES[Math.min(j.stage, 5)] + '…'; $('#jobMsg').textContent = 'Uzun videolarda bu birkaç dakika sürebilir. Sayfayı kapatsan da iş sunucuda devam eder; aynı adresten geri dönebilirsin.'; $('#barFill').style.width = Math.max(6, j.stage / 5 * 100) + '%'; }
+    renderFiles(j.files);
+    if (queued || running) { timer = setTimeout(poll, 1500); return; }
+    $('#cancelBtn').classList.add('hide'); $('#newBtn').classList.remove('hide');
+    if (j.status === 'done') { $('#jobTitle').innerHTML = '<span class="ok">✓ Tamamlandı</span>'; $('#barFill').style.width = '100%'; $('#jobMsg').textContent = 'Dosyalar sunucuda sınırlı süre saklanır, indirmeyi unutma.'; }
+    else if (j.status === 'cancelled') { $('#jobTitle').textContent = 'İptal edildi'; $('#jobMsg').textContent = ''; }
+    else { $('#jobTitle').innerHTML = '<span class="err">Hata oluştu</span>'; $('#jobMsg').innerHTML = '<span class="err">' + esc(j.error || '') + '</span>'; }
+  }).catch(() => { $('#jobMsg').textContent = 'İş bulunamadı veya süresi dolmuş.'; $('#cancelBtn').classList.add('hide'); $('#newBtn').classList.remove('hide'); });
+}
+function renderFiles(files){
+  const key = files.map(f => f.name).join('|');
+  if (key === shownFiles) return; shownFiles = key;
+  $('#res').innerHTML = files.map(f => {
+    const u = '/api/jobs/' + jobId + '/files/' + encodeURIComponent(f.name);
+    return '<div class="it">' + (f.kind === 'video' ? '<video controls preload="metadata" src="' + u + '"></video>' : '') +
+      '<div class="nm">' + esc(f.name) + ' · ' + fmt(f.size) + '</div><a class="dl" href="' + u + '?dl=1">İndir</a></div>';
+  }).join('');
+}
+function fmt(b){ return b > 1e9 ? (b/1e9).toFixed(1) + ' GB' : b > 1e6 ? (b/1e6).toFixed(1) + ' MB' : Math.round(b/1e3) + ' KB'; }
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+</script>
+</body>
+</html>
